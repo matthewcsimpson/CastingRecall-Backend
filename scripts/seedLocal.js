@@ -1,8 +1,8 @@
 const fs = require("fs/promises");
 const path = require("path");
 const { insertPuzzleToDb } = require("../repositories/puzzleRepository");
-const { initializePool, closePool } = require("../utilities/db");
 const { normalizePuzzle } = require("../utilities/puzzleFormatter");
+const { runDbScript } = require("./runDbScript");
 
 const DATA_DIR = path.resolve(__dirname, "../data");
 
@@ -26,50 +26,32 @@ const loadPuzzle = async (fileName) => {
 };
 
 const seed = async () => {
-  let exitCode = 0;
+  const files = await readPuzzleFiles();
 
-  try {
-    await initializePool();
+  if (!files.length) {
+    console.info("No local puzzle files found to seed");
+    return;
+  }
 
-    const files = await readPuzzleFiles();
-
-    if (!files.length) {
-      console.info("No local puzzle files found to seed");
-      return;
-    }
-
-    for (const fileName of files) {
-      try {
-        const puzzle = await loadPuzzle(fileName);
-
-        if (!puzzle || !puzzle.puzzleId) {
-          console.warn(`Skipping invalid puzzle file: ${fileName}`);
-          continue;
-        }
-
-        await insertPuzzleToDb({
-          puzzleId: puzzle.puzzleId,
-          puzzle: puzzle.puzzle,
-          keyPeople: puzzle.keyPeople,
-        });
-        console.info(`Seeded puzzle ${puzzle.puzzleId} from ${fileName}`);
-      } catch (error) {
-        console.error(`Failed to seed ${fileName}`, error);
-      }
-    }
-  } catch (error) {
-    console.error("Seeding failed", error);
-    exitCode = 1;
-  } finally {
+  for (const fileName of files) {
     try {
-      await closePool();
-    } catch (closeError) {
-      console.error("Failed to close database pool", closeError);
-      exitCode = 1;
-    }
+      const puzzle = await loadPuzzle(fileName);
 
-    process.exit(exitCode);
+      if (!puzzle || !puzzle.puzzleId) {
+        console.warn(`Skipping invalid puzzle file: ${fileName}`);
+        continue;
+      }
+
+      await insertPuzzleToDb({
+        puzzleId: puzzle.puzzleId,
+        puzzle: puzzle.puzzle,
+        keyPeople: puzzle.keyPeople,
+      });
+      console.info(`Seeded puzzle ${puzzle.puzzleId} from ${fileName}`);
+    } catch (error) {
+      console.error(`Failed to seed ${fileName}`, error);
+    }
   }
 };
 
-seed();
+runDbScript("Seeding", seed);

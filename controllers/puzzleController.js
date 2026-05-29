@@ -14,6 +14,27 @@ const MAX_GENERATION_ATTEMPTS = parseIntWithDefault(
 );
 
 /**
+ * Normalize a stored puzzle record and send it as the response, or a 500
+ * when the stored payload cannot be normalized.
+ * @param {object} res
+ * @param {{puzzleId: number, puzzle: unknown[], keyPeople: string[]}} record
+ * @returns {object}
+ */
+const sendNormalizedPuzzle = (res, record) => {
+  const puzzle = normalizePuzzle({
+    puzzleId: record.puzzleId,
+    puzzle: record.puzzle,
+    keyPeople: record.keyPeople,
+  });
+
+  if (!puzzle) {
+    return res.status(500).json({ message: "Stored puzzle is invalid" });
+  }
+
+  return res.status(200).json(puzzle);
+};
+
+/**
  * Endpoint controller to generate a new puzzle.
  * @param {object} req
  * @param {object} res
@@ -100,17 +121,7 @@ exports.getLatestPuzzle = async (_req, res) => {
       return res.status(204).send("no puzzles available");
     }
 
-    const puzzle = normalizePuzzle({
-      puzzleId: latest.puzzleId,
-      puzzle: latest.puzzle,
-      keyPeople: latest.keyPeople,
-    });
-
-    if (!puzzle) {
-      return res.status(500).json({ message: "Stored puzzle is invalid" });
-    }
-
-    return res.status(200).json(puzzle);
+    return sendNormalizedPuzzle(res, latest);
   } catch (err) {
     console.error("---> getLatestPuzzle: ", err);
     return res.status(500).json({ message: "Unable to load latest puzzle" });
@@ -137,17 +148,7 @@ exports.getPuzzleById = async (req, res) => {
       return res.status(404).json({ message: "Puzzle not found" });
     }
 
-    const puzzle = normalizePuzzle({
-      puzzleId: record.puzzleId,
-      puzzle: record.puzzle,
-      keyPeople: record.keyPeople,
-    });
-
-    if (!puzzle) {
-      return res.status(500).json({ message: "Stored puzzle is invalid" });
-    }
-
-    return res.status(200).json(puzzle);
+    return sendNormalizedPuzzle(res, record);
   } catch (err) {
     console.error("---> getPuzzleById: ", err);
     return res.status(500).json({ message: "Unable to load puzzle" });
