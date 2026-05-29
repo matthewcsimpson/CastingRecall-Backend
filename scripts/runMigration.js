@@ -70,4 +70,13 @@ const run = async () => {
   });
 };
 
-runDbScript("Migration", run);
+if (require.main === module) {
+  runDbScript("Migration", run);
+}
+
+module.exports = {
+  ensureMigrationsTable,
+  loadAppliedMigrations,
+  applyMigration,
+  run,
+};
