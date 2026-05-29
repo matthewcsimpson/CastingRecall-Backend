@@ -2,7 +2,7 @@ const fs = require("fs/promises");
 const path = require("path");
 const { withClient } = require("../utilities/db");
 const { runDbScript } = require("./runDbScript");
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 const MIGRATIONS_DIR = path.resolve(__dirname, "../migrations");
 

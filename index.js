@@ -1,7 +1,7 @@
 // libraries
 const express = require("express");
 const cors = require("cors");
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 const { initializePool, closePool } = require("./utilities/db");
 const app = express();
 

@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 /**
  * @typedef {import("axios").AxiosResponse<any>} AxiosResponse
