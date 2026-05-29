@@ -70,16 +70,25 @@ const normalizeGenreIds = (ids) => {
 };
 
 /**
+ * Resolve a person's display name from the first non-empty of name,
+ * original_name, and (optionally) fullName.
+ * @param {*} person Person-like object from a TMDB payload.
+ * @param {{includeFullName?: boolean}} [options]
+ * @returns {string} Trimmed display name, or "" when none present.
+ */
+const pickPersonName = (person, { includeFullName = true } = {}) =>
+  getTrimmedString(person?.name) ||
+  getTrimmedString(person?.original_name) ||
+  (includeFullName ? getTrimmedString(person?.fullName) : "");
+
+/**
  * Sanitize director data to id/name pairs.
  * @param {*} directors Raw director list.
  * @returns {{id: number|string|null, name: string}[]} Normalized directors.
  */
 const sanitizeDirectors = (directors) => {
   return normalizePeople(directors, (director) => {
-    const name =
-      getTrimmedString(director?.name) ||
-      getTrimmedString(director?.original_name) ||
-      getTrimmedString(director?.fullName);
+    const name = pickPersonName(director);
 
     if (!name) {
       return null;
@@ -99,8 +108,7 @@ const sanitizeDirectors = (directors) => {
  */
 const sanitizeCast = (cast) => {
   return normalizePeople(cast, (actor) => {
-    const name =
-      getTrimmedString(actor?.name) || getTrimmedString(actor?.original_name);
+    const name = pickPersonName(actor, { includeFullName: false });
 
     if (!name) {
       return null;
@@ -122,10 +130,7 @@ const sanitizeCast = (cast) => {
  * @returns {string} Key person display name.
  */
 const getKeyPersonName = (keyPerson, cast) => {
-  const primaryName =
-    getTrimmedString(keyPerson?.name) ||
-    getTrimmedString(keyPerson?.original_name) ||
-    getTrimmedString(keyPerson?.fullName);
+  const primaryName = pickPersonName(keyPerson);
 
   if (primaryName) {
     return primaryName;
