@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 /**
  * @typedef {import("axios").AxiosResponse<any>} AxiosResponse
@@ -10,7 +10,7 @@ require("dotenv").config();
  */
 
 const { parseNumberWithDefault } = require("./numberUtils");
-const { buildNormalizedMovie } = require("./puzzleFormatter");
+const { buildNormalizedMovie, deriveKeyPeople } = require("./puzzleFormatter");
 const {
   createExternalServiceError,
   tmdbClient,
@@ -19,6 +19,7 @@ const {
 } = require("./tmdbClient");
 const { isEligibleMovie, LOWEST_YEAR } = require("./movieFilters");
 const { getRandomNumberUpToInt, getRandomActor } = require("./randomUtils");
+const { logger } = require("./logger");
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_RETRIES = parseNumberWithDefault(process.env.MAX_RETRIES, 2);
@@ -142,15 +143,28 @@ const getMovieFromRandomYear = async (year) => {
 };
 
 /**
+ * Fetch a movie's credits and return the truthy entries from one field
+ * that match a predicate, optionally capped at a limit.
+ * @param {number|string|null} movieId
+ * @param {"cast"|"crew"} field
+ * @param {(entry: TMDBPerson) => boolean} predicate
+ * @param {number} [limit] Optional cap on the number of returned entries.
+ * @returns {Promise<TMDBPerson[]>}
+ */
+const selectFromCredits = async (movieId, field, predicate, limit) => {
+  const credits = await getCredits(movieId);
+  const entries = Array.isArray(credits[field]) ? credits[field] : [];
+  const filtered = entries.filter((entry) => entry && predicate(entry));
+  return typeof limit === "number" ? filtered.slice(0, limit) : filtered;
+};
+
+/**
  * Get the primary cast members for a movie.
  * @param {number|string|null} movieId
  * @returns {Promise<TMDBPerson[]>}
  */
-const getPrimaryCast = async (movieId) => {
-  const credits = await getCredits(movieId);
-  const cast = Array.isArray(credits.cast) ? credits.cast : [];
-  return cast.filter((actor) => actor && actor.order < 5).slice(0, 5);
-};
+const getPrimaryCast = (movieId) =>
+  selectFromCredits(movieId, "cast", (actor) => actor.order < 5, 5);
 
 /**
  * Get supporting cast members for a movie, excluding previous cast.
@@ -158,14 +172,17 @@ const getPrimaryCast = async (movieId) => {
  * @param {TMDBPerson[]} [previousCast]
  * @returns {Promise<TMDBPerson[]>}
  */
-const getSupportingCast = async (movieId, previousCast = []) => {
-  const credits = await getCredits(movieId);
-  const cast = Array.isArray(credits.cast) ? credits.cast : [];
+const getSupportingCast = (movieId, previousCast = []) => {
   const excludeIds = new Set(
     previousCast.filter(Boolean).map((actor) => actor.id)
   );
 
-  return cast.filter((actor) => actor && !excludeIds.has(actor.id)).slice(0, 5);
+  return selectFromCredits(
+    movieId,
+    "cast",
+    (actor) => !excludeIds.has(actor.id),
+    5
+  );
 };
 
 /**
@@ -173,16 +190,14 @@ const getSupportingCast = async (movieId, previousCast = []) => {
  * @param {number|string|null} movieId
  * @returns {Promise<TMDBPerson[]>}
  */
-const getDirectors = async (movieId) => {
-  const credits = await getCredits(movieId);
-  const crew = Array.isArray(credits.crew) ? credits.crew : [];
-  return crew.filter(
+const getDirectors = (movieId) =>
+  selectFromCredits(
+    movieId,
+    "crew",
     (crewMember) =>
-      crewMember &&
       typeof crewMember.job === "string" &&
       crewMember.job.toLowerCase() === "director"
   );
-};
 
 /**
  * Get a movie by actor ID, excluding already selected movies.
@@ -319,9 +334,7 @@ const makePuzzle = async () => {
     const normalizedPuzzle = tempArray.map((movie) =>
       buildNormalizedMovie(movie)
     );
-    const keyPeople = normalizedPuzzle.map(
-      (movie) => movie?.keyPerson?.name ?? ""
-    );
+    const keyPeople = deriveKeyPeople(normalizedPuzzle);
 
     const newPuzzle = {
       puzzleId: timestamp,
@@ -329,7 +342,7 @@ const makePuzzle = async () => {
       keyPeople,
     };
 
-    console.info("puzzle made");
+    logger.info("puzzle made", { puzzleId: newPuzzle.puzzleId });
     return newPuzzle;
   } catch (error) {
     if (error?.isExternalServiceError) {

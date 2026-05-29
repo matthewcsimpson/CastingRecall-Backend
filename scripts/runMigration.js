@@ -1,7 +1,9 @@
 const fs = require("fs/promises");
 const path = require("path");
-const { withClient, initializePool, closePool } = require("../utilities/db");
-require("dotenv").config();
+const { withClient } = require("../utilities/db");
+const { runDbScript } = require("./runDbScript");
+const { logger } = require("../utilities/logger");
+require("dotenv").config({ quiet: true });
 
 const MIGRATIONS_DIR = path.resolve(__dirname, "../migrations");
 
@@ -20,6 +22,10 @@ const loadAppliedMigrations = async (client) => {
   return new Set(result.rows.map((row) => row.file_name));
 };
 
+// Each migration runs inside a single transaction so a failure rolls back
+// cleanly. Statements that cannot run in a transaction block (e.g.
+// CREATE INDEX CONCURRENTLY) are not supported here and would need a separate
+// non-transactional apply path.
 const applyMigration = async (client, fileName, sql) => {
   let committed = false;
   await client.query("BEGIN");
@@ -31,13 +37,13 @@ const applyMigration = async (client, fileName, sql) => {
     );
     await client.query("COMMIT");
     committed = true;
-    console.info(`Applied migration: ${fileName}`);
+    logger.info("Applied migration", { fileName });
   } catch (error) {
     if (!committed) {
       try {
         await client.query("ROLLBACK");
       } catch (rollbackError) {
-        console.error("Failed to rollback migration", rollbackError);
+        logger.error("Failed to rollback migration", { error: rollbackError });
       }
     }
     throw error;
@@ -45,45 +51,37 @@ const applyMigration = async (client, fileName, sql) => {
 };
 
 const run = async () => {
-  let exitCode = 0;
+  const files = await fs.readdir(MIGRATIONS_DIR);
+  const migrations = files.filter((file) => file.endsWith(".sql")).sort();
 
-  try {
-    await initializePool();
-    const files = await fs.readdir(MIGRATIONS_DIR);
-    const migrations = files.filter((file) => file.endsWith(".sql")).sort();
-
-    if (!migrations.length) {
-      console.info("No migrations found");
-      return;
-    }
-
-    await withClient(async (client) => {
-      await ensureMigrationsTable(client);
-      const applied = await loadAppliedMigrations(client);
-
-      for (const fileName of migrations) {
-        if (applied.has(fileName)) {
-          continue;
-        }
-
-        const filePath = path.join(MIGRATIONS_DIR, fileName);
-        const sql = await fs.readFile(filePath, "utf8");
-        await applyMigration(client, fileName, sql);
-      }
-    });
-  } catch (error) {
-    console.error("Migration failed", error);
-    exitCode = 1;
-  } finally {
-    try {
-      await closePool();
-    } catch (closeError) {
-      console.error("Failed to close database pool", closeError);
-      exitCode = 1;
-    }
-
-    process.exit(exitCode);
+  if (!migrations.length) {
+    logger.info("No migrations found");
+    return;
   }
+
+  await withClient(async (client) => {
+    await ensureMigrationsTable(client);
+    const applied = await loadAppliedMigrations(client);
+
+    for (const fileName of migrations) {
+      if (applied.has(fileName)) {
+        continue;
+      }
+
+      const filePath = path.join(MIGRATIONS_DIR, fileName);
+      const sql = await fs.readFile(filePath, "utf8");
+      await applyMigration(client, fileName, sql);
+    }
+  });
 };
 
-run();
+if (require.main === module) {
+  runDbScript("Migration", run);
+}
+
+module.exports = {
+  ensureMigrationsTable,
+  loadAppliedMigrations,
+  applyMigration,
+  run,
+};
