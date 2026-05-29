@@ -70,11 +70,15 @@ layers separate:
   by default (Heroku's self-signed cert); set `DATABASE_CA` to verify the
   chain properly.
 - Migrations are plain SQL in `migrations/`, applied in filename order by
-  `scripts/runMigration.js` and tracked in `schema_migrations`. **Migrations
-  are immutable once applied** — never edit an applied file; add a new
-  forward migration. Each migration runs in one transaction, so statements
-  that can't run in a transaction block (e.g. `CREATE INDEX CONCURRENTLY`) are
-  not supported by the current runner.
+  `scripts/runMigration.js` (`npm run migrate`) and tracked in
+  `schema_migrations`. The runner is idempotent — it skips already-applied
+  files. **Migrations are immutable once applied** — never edit an applied
+  file; add a new forward migration. Each migration runs in one transaction,
+  so statements that can't run in a transaction block (e.g.
+  `CREATE INDEX CONCURRENTLY`) are not supported by the current runner.
+- On Heroku, `npm run migrate` runs automatically in the **release phase**
+  (see `Procfile`) on every deploy, before the new release takes traffic. A
+  failed migration aborts the release.
 
 ## Tests
 
