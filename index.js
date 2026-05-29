@@ -12,27 +12,39 @@ app.use(cors());
 const PORT = process.env.PORT || 8080;
 const puzzlerouter = require("./routes/puzzles");
 
-// middleware
-app.use((req, _res, next) => {
-  let timestamp = Date.now();
+/**
+ * Log each incoming request, then continue down the middleware chain.
+ */
+const requestLogger = (req, _res, next) => {
+  const timestamp = Date.now();
   console.log(`${timestamp} incoming request at ${req.originalUrl}`);
   next();
-});
+};
 
-app.use("/puzzle", puzzlerouter);
-
-app.get("/", (req, res) => {
+/**
+ * Redirect the API root to the puzzle resource.
+ */
+const redirectToPuzzle = (req, res) => {
   res.writeHead(301, { Location: "http://" + req.headers["host"] + "/puzzle" });
   return res.end();
-});
+};
 
 // Terminal error handler. Express 5 forwards rejections/throws from async
 // route handlers here; the controllers also catch their own errors, so this
 // is a backstop rather than the primary path.
-app.use((err, _req, res, _next) => {
+const errorHandler = (err, _req, res, _next) => {
   console.error("Unhandled error", err);
   return res.status(500).json({ message: "Internal server error" });
-});
+};
+
+// middleware
+app.use(requestLogger);
+
+app.use("/puzzle", puzzlerouter);
+
+app.get("/", redirectToPuzzle);
+
+app.use(errorHandler);
 
 let server;
 let isShuttingDown = false;
@@ -78,8 +90,22 @@ const shutdown = async (signal) => {
   }
 };
 
-["SIGTERM", "SIGINT"].forEach((signal) => {
-  process.on(signal, () => shutdown(signal));
-});
+// Only wire signal handlers and start listening when run directly
+// (`node index.js`). When required by a test, the app is exported without
+// side effects.
+if (require.main === module) {
+  ["SIGTERM", "SIGINT"].forEach((signal) => {
+    process.on(signal, () => shutdown(signal));
+  });
 
-startServer();
+  startServer();
+}
+
+module.exports = {
+  app,
+  requestLogger,
+  redirectToPuzzle,
+  errorHandler,
+  startServer,
+  shutdown,
+};

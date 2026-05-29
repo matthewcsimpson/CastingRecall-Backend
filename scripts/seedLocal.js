@@ -54,4 +54,8 @@ const seed = async () => {
   }
 };
 
-runDbScript("Seeding", seed);
+if (require.main === module) {
+  runDbScript("Seeding", seed);
+}
+
+module.exports = { readPuzzleFiles, loadPuzzle, seed };
