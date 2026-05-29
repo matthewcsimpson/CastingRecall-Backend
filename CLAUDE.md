@@ -90,3 +90,6 @@ layers separate:
   file in its own process so cache edits don't leak.
 - Entry points guard side effects with `if (require.main === module)` so they
   can be imported by tests without starting a server or opening a connection.
+- CI (`.github/workflows/ci.yml`) runs `npm ci && npm test` on Node 24 for
+  every pull request and on pushes to `main` / `production`. The suite needs
+  no secrets — tests stub `dotenv` and manage their own env.
