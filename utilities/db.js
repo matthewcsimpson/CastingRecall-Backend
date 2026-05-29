@@ -40,7 +40,13 @@ const buildPoolConfig = () => {
   };
 
   if (process.env.NODE_ENV === "production") {
-    config.ssl = { rejectUnauthorized: false };
+    // Heroku Postgres presents a self-signed certificate, so full chain
+    // verification is off by default. Set DATABASE_CA to the provider's CA
+    // bundle to enable proper verification when it is available.
+    const ca = process.env.DATABASE_CA;
+    config.ssl = ca
+      ? { rejectUnauthorized: true, ca }
+      : { rejectUnauthorized: false };
   }
 
   return config;
