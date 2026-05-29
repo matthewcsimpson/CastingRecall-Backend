@@ -19,6 +19,7 @@ const {
 } = require("./tmdbClient");
 const { isEligibleMovie, LOWEST_YEAR } = require("./movieFilters");
 const { getRandomNumberUpToInt, getRandomActor } = require("./randomUtils");
+const { logger } = require("./logger");
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_RETRIES = parseNumberWithDefault(process.env.MAX_RETRIES, 2);
@@ -341,7 +342,7 @@ const makePuzzle = async () => {
       keyPeople,
     };
 
-    console.info("puzzle made");
+    logger.info("puzzle made", { puzzleId: newPuzzle.puzzleId });
     return newPuzzle;
   } catch (error) {
     if (error?.isExternalServiceError) {

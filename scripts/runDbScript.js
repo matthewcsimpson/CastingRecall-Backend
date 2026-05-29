@@ -1,4 +1,5 @@
 const { initializePool, closePool } = require("../utilities/db");
+const { logger } = require("../utilities/logger");
 
 /**
  * Run a one-off database script with managed pool lifecycle.
@@ -15,13 +16,13 @@ const runDbScript = async (label, task) => {
     await initializePool();
     await task();
   } catch (error) {
-    console.error(`${label} failed`, error);
+    logger.error(`${label} failed`, { error });
     exitCode = 1;
   } finally {
     try {
       await closePool();
     } catch (closeError) {
-      console.error("Failed to close database pool", closeError);
+      logger.error("Failed to close database pool", { error: closeError });
       exitCode = 1;
     }
 

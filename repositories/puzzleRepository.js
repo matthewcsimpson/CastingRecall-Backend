@@ -1,4 +1,5 @@
 const { query } = require("../utilities/db");
+const { logger } = require("../utilities/logger");
 
 /**
  * @typedef {Object} PuzzleRecord
@@ -28,7 +29,7 @@ const mapPuzzleRow = (row) => {
         try {
           return JSON.parse(row.puzzle);
         } catch (error) {
-          console.error("Unable to parse stored puzzle JSON", error);
+          logger.error("Unable to parse stored puzzle JSON", { error });
           return [];
         }
       }
@@ -59,7 +60,7 @@ const insertPuzzleToDb = async ({ puzzleId, puzzle, keyPeople }) => {
       [puzzleId, serializedPuzzle, normalizedKeyPeople]
     );
   } catch (error) {
-    console.error("Failed to persist puzzle", {
+    logger.error("Failed to persist puzzle", {
       puzzleId,
       keyPeople: normalizedKeyPeople,
       error,

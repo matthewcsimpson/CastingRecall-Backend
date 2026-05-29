@@ -1,5 +1,6 @@
 require("dotenv").config({ quiet: true });
 const { Pool } = require("pg");
+const { logger } = require("./logger");
 
 let pool = null;
 
@@ -15,7 +16,7 @@ const closePool = async () => {
   try {
     await pool.end();
   } catch (error) {
-    console.error("Error shutting down PostgreSQL pool", error);
+    logger.error("Error shutting down PostgreSQL pool", { error });
   } finally {
     pool = null;
   }
@@ -53,7 +54,7 @@ const createPool = () => {
   const newPool = new Pool(buildPoolConfig());
 
   newPool.on("error", (err) => {
-    console.error("Unexpected PostgreSQL client error", err);
+    logger.error("Unexpected PostgreSQL client error", { error: err });
   });
 
   return newPool;
