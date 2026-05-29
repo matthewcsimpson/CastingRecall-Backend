@@ -41,12 +41,12 @@ test("requestLogger logs the request and calls next", () => {
   assert.equal(nextCalled, true);
 });
 
-test("redirectToPuzzle issues a 301 to /puzzle on the request host", () => {
+test("redirectToPuzzle issues a 301 to a scheme-relative /puzzle", () => {
   const req = createMockRequest({ headers: { host: "castingrecall.test" } });
   const res = createMockResponse();
   redirectToPuzzle(req, res);
   assert.equal(res.statusCode, 301);
-  assert.equal(res.location, "http://castingrecall.test/puzzle");
+  assert.equal(res.location, "/puzzle");
   assert.equal(res.ended, true);
 });
 

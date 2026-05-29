@@ -1,5 +1,6 @@
 require("dotenv").config({ quiet: true });
 const { Pool } = require("pg");
+const { logger } = require("./logger");
 
 let pool = null;
 
@@ -15,7 +16,7 @@ const closePool = async () => {
   try {
     await pool.end();
   } catch (error) {
-    console.error("Error shutting down PostgreSQL pool", error);
+    logger.error("Error shutting down PostgreSQL pool", { error });
   } finally {
     pool = null;
   }
@@ -39,7 +40,13 @@ const buildPoolConfig = () => {
   };
 
   if (process.env.NODE_ENV === "production") {
-    config.ssl = { rejectUnauthorized: false };
+    // Heroku Postgres presents a self-signed certificate, so full chain
+    // verification is off by default. Set DATABASE_CA to the provider's CA
+    // bundle to enable proper verification when it is available.
+    const ca = process.env.DATABASE_CA;
+    config.ssl = ca
+      ? { rejectUnauthorized: true, ca }
+      : { rejectUnauthorized: false };
   }
 
   return config;
@@ -53,7 +60,7 @@ const createPool = () => {
   const newPool = new Pool(buildPoolConfig());
 
   newPool.on("error", (err) => {
-    console.error("Unexpected PostgreSQL client error", err);
+    logger.error("Unexpected PostgreSQL client error", { error: err });
   });
 
   return newPool;

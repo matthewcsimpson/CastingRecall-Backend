@@ -3,6 +3,7 @@ const path = require("path");
 const { insertPuzzleToDb } = require("../repositories/puzzleRepository");
 const { normalizePuzzle } = require("../utilities/puzzleFormatter");
 const { runDbScript } = require("./runDbScript");
+const { logger } = require("../utilities/logger");
 
 const DATA_DIR = path.resolve(__dirname, "../data");
 
@@ -29,7 +30,7 @@ const seed = async () => {
   const files = await readPuzzleFiles();
 
   if (!files.length) {
-    console.info("No local puzzle files found to seed");
+    logger.info("No local puzzle files found to seed");
     return;
   }
 
@@ -38,7 +39,7 @@ const seed = async () => {
       const puzzle = await loadPuzzle(fileName);
 
       if (!puzzle || !puzzle.puzzleId) {
-        console.warn(`Skipping invalid puzzle file: ${fileName}`);
+        logger.warn("Skipping invalid puzzle file", { fileName });
         continue;
       }
 
@@ -47,9 +48,9 @@ const seed = async () => {
         puzzle: puzzle.puzzle,
         keyPeople: puzzle.keyPeople,
       });
-      console.info(`Seeded puzzle ${puzzle.puzzleId} from ${fileName}`);
+      logger.info("Seeded puzzle", { puzzleId: puzzle.puzzleId, fileName });
     } catch (error) {
-      console.error(`Failed to seed ${fileName}`, error);
+      logger.error("Failed to seed puzzle file", { fileName, error });
     }
   }
 };

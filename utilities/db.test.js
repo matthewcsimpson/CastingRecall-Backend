@@ -56,6 +56,7 @@ beforeEach(() => {
   resetFakePool();
   process.env.DATABASE_URL = "postgres://localhost:5432/test";
   delete process.env.NODE_ENV;
+  delete process.env.DATABASE_CA;
   console.error = () => {};
 });
 
@@ -76,6 +77,17 @@ test("pool config enables SSL in production", async () => {
   const db = freshDb();
   await db.initializePool();
   assert.deepEqual(FakePool.lastConfig.ssl, { rejectUnauthorized: false });
+});
+
+test("pool config verifies SSL when DATABASE_CA is provided", async () => {
+  process.env.NODE_ENV = "production";
+  process.env.DATABASE_CA = "-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----";
+  const db = freshDb();
+  await db.initializePool();
+  assert.deepEqual(FakePool.lastConfig.ssl, {
+    rejectUnauthorized: true,
+    ca: process.env.DATABASE_CA,
+  });
 });
 
 test("initializePool is idempotent (single pool, single ping)", async () => {

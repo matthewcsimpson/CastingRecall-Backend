@@ -244,6 +244,13 @@ test("getPuzzleById returns 400 for a non-numeric id", async () => {
   assert.deepEqual(res.body, { message: "Invalid puzzle id" });
 });
 
+test("getPuzzleById returns 400 for a non-integer id", async () => {
+  const res = createMockResponse();
+  await getPuzzleById(createMockRequest({ params: { puzzleid: "1.5" } }), res);
+  assert.equal(res.statusCode, 400);
+  assert.deepEqual(res.body, { message: "Invalid puzzle id" });
+});
+
 test("getPuzzleById returns 404 when the puzzle is not found", async () => {
   byIdImpl = async () => null;
   const res = createMockResponse();

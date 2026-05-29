@@ -2,6 +2,7 @@ const fs = require("fs/promises");
 const path = require("path");
 const { withClient } = require("../utilities/db");
 const { runDbScript } = require("./runDbScript");
+const { logger } = require("../utilities/logger");
 require("dotenv").config({ quiet: true });
 
 const MIGRATIONS_DIR = path.resolve(__dirname, "../migrations");
@@ -21,6 +22,10 @@ const loadAppliedMigrations = async (client) => {
   return new Set(result.rows.map((row) => row.file_name));
 };
 
+// Each migration runs inside a single transaction so a failure rolls back
+// cleanly. Statements that cannot run in a transaction block (e.g.
+// CREATE INDEX CONCURRENTLY) are not supported here and would need a separate
+// non-transactional apply path.
 const applyMigration = async (client, fileName, sql) => {
   let committed = false;
   await client.query("BEGIN");
@@ -32,13 +37,13 @@ const applyMigration = async (client, fileName, sql) => {
     );
     await client.query("COMMIT");
     committed = true;
-    console.info(`Applied migration: ${fileName}`);
+    logger.info("Applied migration", { fileName });
   } catch (error) {
     if (!committed) {
       try {
         await client.query("ROLLBACK");
       } catch (rollbackError) {
-        console.error("Failed to rollback migration", rollbackError);
+        logger.error("Failed to rollback migration", { error: rollbackError });
       }
     }
     throw error;
@@ -50,7 +55,7 @@ const run = async () => {
   const migrations = files.filter((file) => file.endsWith(".sql")).sort();
 
   if (!migrations.length) {
-    console.info("No migrations found");
+    logger.info("No migrations found");
     return;
   }
 
