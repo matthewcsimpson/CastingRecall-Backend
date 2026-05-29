@@ -22,6 +22,10 @@ const loadAppliedMigrations = async (client) => {
   return new Set(result.rows.map((row) => row.file_name));
 };
 
+// Each migration runs inside a single transaction so a failure rolls back
+// cleanly. Statements that cannot run in a transaction block (e.g.
+// CREATE INDEX CONCURRENTLY) are not supported here and would need a separate
+// non-transactional apply path.
 const applyMigration = async (client, fileName, sql) => {
   let committed = false;
   await client.query("BEGIN");
