@@ -26,6 +26,14 @@ app.get("/", (req, res) => {
   return res.end();
 });
 
+// Terminal error handler. Express 5 forwards rejections/throws from async
+// route handlers here; the controllers also catch their own errors, so this
+// is a backstop rather than the primary path.
+app.use((err, _req, res, _next) => {
+  console.error("Unhandled error", err);
+  return res.status(500).json({ message: "Internal server error" });
+});
+
 let server;
 let isShuttingDown = false;
 
@@ -34,6 +42,10 @@ const startServer = async () => {
     await initializePool();
     server = app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
+    });
+    server.on("error", (error) => {
+      console.error("HTTP server error", error);
+      process.exit(1);
     });
   } catch (error) {
     console.error("Failed to initialize database pool", error);
