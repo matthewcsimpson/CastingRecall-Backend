@@ -1,6 +1,7 @@
 const fs = require("fs/promises");
 const path = require("path");
-const { withClient, initializePool, closePool } = require("../utilities/db");
+const { withClient } = require("../utilities/db");
+const { runDbScript } = require("./runDbScript");
 require("dotenv").config();
 
 const MIGRATIONS_DIR = path.resolve(__dirname, "../migrations");
@@ -45,45 +46,28 @@ const applyMigration = async (client, fileName, sql) => {
 };
 
 const run = async () => {
-  let exitCode = 0;
+  const files = await fs.readdir(MIGRATIONS_DIR);
+  const migrations = files.filter((file) => file.endsWith(".sql")).sort();
 
-  try {
-    await initializePool();
-    const files = await fs.readdir(MIGRATIONS_DIR);
-    const migrations = files.filter((file) => file.endsWith(".sql")).sort();
-
-    if (!migrations.length) {
-      console.info("No migrations found");
-      return;
-    }
-
-    await withClient(async (client) => {
-      await ensureMigrationsTable(client);
-      const applied = await loadAppliedMigrations(client);
-
-      for (const fileName of migrations) {
-        if (applied.has(fileName)) {
-          continue;
-        }
-
-        const filePath = path.join(MIGRATIONS_DIR, fileName);
-        const sql = await fs.readFile(filePath, "utf8");
-        await applyMigration(client, fileName, sql);
-      }
-    });
-  } catch (error) {
-    console.error("Migration failed", error);
-    exitCode = 1;
-  } finally {
-    try {
-      await closePool();
-    } catch (closeError) {
-      console.error("Failed to close database pool", closeError);
-      exitCode = 1;
-    }
-
-    process.exit(exitCode);
+  if (!migrations.length) {
+    console.info("No migrations found");
+    return;
   }
+
+  await withClient(async (client) => {
+    await ensureMigrationsTable(client);
+    const applied = await loadAppliedMigrations(client);
+
+    for (const fileName of migrations) {
+      if (applied.has(fileName)) {
+        continue;
+      }
+
+      const filePath = path.join(MIGRATIONS_DIR, fileName);
+      const sql = await fs.readFile(filePath, "utf8");
+      await applyMigration(client, fileName, sql);
+    }
+  });
 };
 
-run();
+runDbScript("Migration", run);
