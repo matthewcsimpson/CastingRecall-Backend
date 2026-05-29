@@ -174,6 +174,14 @@ const buildNormalizedMovie = (movie = {}) => {
 };
 
 /**
+ * Derive the per-movie key-person name list from normalized movies.
+ * @param {{keyPerson?: {name?: string}}[]} movies Normalized movie list.
+ * @returns {string[]} One trimmed key-person name per movie.
+ */
+const deriveKeyPeople = (movies) =>
+  movies.map((movie) => getTrimmedString(movie?.keyPerson?.name));
+
+/**
  * Normalize a stored puzzle payload into the response contract.
  * @param {*} rawPuzzle Raw puzzle object from disk or TMDB aggregation.
  * @returns {{puzzleId: number|string|null, puzzle: ReturnType<typeof buildNormalizedMovie>[], keyPeople: string[]}|null}
@@ -187,9 +195,7 @@ const normalizePuzzle = (rawPuzzle) => {
     ? rawPuzzle.puzzle.map((movie) => buildNormalizedMovie(movie))
     : [];
 
-  const derivedKeyPeople = normalizedMovies.map((movie) =>
-    getTrimmedString(movie?.keyPerson?.name)
-  );
+  const derivedKeyPeople = deriveKeyPeople(normalizedMovies);
 
   let keyPeople = Array.isArray(rawPuzzle.keyPeople)
     ? rawPuzzle.keyPeople.map((name) => getTrimmedString(name))
@@ -209,4 +215,5 @@ const normalizePuzzle = (rawPuzzle) => {
 module.exports = {
   buildNormalizedMovie,
   normalizePuzzle,
+  deriveKeyPeople,
 };

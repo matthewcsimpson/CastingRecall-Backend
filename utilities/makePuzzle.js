@@ -10,7 +10,7 @@ require("dotenv").config();
  */
 
 const { parseNumberWithDefault } = require("./numberUtils");
-const { buildNormalizedMovie } = require("./puzzleFormatter");
+const { buildNormalizedMovie, deriveKeyPeople } = require("./puzzleFormatter");
 const {
   createExternalServiceError,
   tmdbClient,
@@ -333,9 +333,7 @@ const makePuzzle = async () => {
     const normalizedPuzzle = tempArray.map((movie) =>
       buildNormalizedMovie(movie)
     );
-    const keyPeople = normalizedPuzzle.map(
-      (movie) => movie?.keyPerson?.name ?? ""
-    );
+    const keyPeople = deriveKeyPeople(normalizedPuzzle);
 
     const newPuzzle = {
       puzzleId: timestamp,
