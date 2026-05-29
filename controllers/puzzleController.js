@@ -139,7 +139,9 @@ exports.getPuzzleById = async (req, res) => {
   const { puzzleid } = req.params;
   const puzzleId = Number(puzzleid);
 
-  if (Number.isNaN(puzzleId)) {
+  // puzzle_id is a positive BIGINT; reject NaN, floats, and non-positive ids
+  // rather than letting them coerce (e.g. "1.5" -> 1.5, " " -> 0) into a query.
+  if (!Number.isInteger(puzzleId) || puzzleId < 1) {
     return res.status(400).json({ message: "Invalid puzzle id" });
   }
 
