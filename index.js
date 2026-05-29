@@ -6,6 +6,10 @@ const { initializePool, closePool } = require("./utilities/db");
 const { logger } = require("./utilities/logger");
 const app = express();
 
+// Behind Heroku's router, honour X-Forwarded-* so req.ip / req.protocol
+// reflect the client rather than the proxy.
+app.set("trust proxy", 1);
+
 app.use(express.json());
 app.use(cors());
 
@@ -17,15 +21,17 @@ const puzzlerouter = require("./routes/puzzles");
  * Log each incoming request, then continue down the middleware chain.
  */
 const requestLogger = (req, _res, next) => {
-  logger.info("incoming request", { url: req.originalUrl });
+  logger.info("incoming request", { url: req.originalUrl, ip: req.ip });
   next();
 };
 
 /**
  * Redirect the API root to the puzzle resource.
  */
-const redirectToPuzzle = (req, res) => {
-  res.writeHead(301, { Location: "http://" + req.headers["host"] + "/puzzle" });
+const redirectToPuzzle = (_req, res) => {
+  // Relative redirect: the browser resolves it against the request's own scheme
+  // and host, so an HTTPS request is no longer downgraded to plain HTTP.
+  res.writeHead(301, { Location: "/puzzle" });
   return res.end();
 };
 
