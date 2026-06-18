@@ -12,15 +12,22 @@ const {
 // module (so importing index never opens a connection). The require.main guard
 // in index.js means importing it here does not start a server.
 mockModule(require.resolve("./routes/puzzles"), (_req, _res, next) => next());
+// Delegate to swappable impls so individual tests can force a pool-init
+// failure or spy on closePool without re-seeding require.cache.
+let initPoolImpl = async () => {};
+let closePoolImpl = async () => {};
 mockModule(require.resolve("./utilities/db"), {
-  initializePool: async () => {},
-  closePool: async () => {},
+  initializePool: (...args) => initPoolImpl(...args),
+  closePool: (...args) => closePoolImpl(...args),
 });
 
-const { app, requestLogger, redirectToPuzzle, errorHandler } = require("./index");
+const { app, requestLogger, redirectToPuzzle, errorHandler, startServer, shutdown } =
+  require("./index");
 
 beforeEach(() => {
   mock.restoreAll();
+  initPoolImpl = async () => {};
+  closePoolImpl = async () => {};
 });
 
 test("exports an Express application", () => {
@@ -56,6 +63,44 @@ test("errorHandler responds 500 with a generic message", () => {
   errorHandler(new Error("boom"), createMockRequest(), res, () => {});
   assert.equal(res.statusCode, 500);
   assert.deepEqual(res.body, { message: "Internal server error" });
+});
+
+// --- server lifecycle ---
+
+test("startServer exits 1 when the database pool fails to initialize", async () => {
+  mock.method(console, "error", () => {});
+  initPoolImpl = async () => {
+    throw new Error("db down");
+  };
+  const exitCodes = [];
+  mock.method(process, "exit", (code) => {
+    exitCodes.push(code);
+  });
+
+  // initializePool rejects before app.listen, so no socket is opened.
+  await startServer();
+
+  assert.deepEqual(exitCodes, [1]);
+});
+
+test("shutdown closes the pool, exits 0, and ignores a second signal", async () => {
+  mock.method(console, "log", () => {});
+  let closeCalls = 0;
+  closePoolImpl = async () => {
+    closeCalls += 1;
+  };
+  const exitCodes = [];
+  mock.method(process, "exit", (code) => {
+    exitCodes.push(code);
+  });
+
+  // No server was started, so shutdown takes the finalize-directly path.
+  await shutdown("SIGTERM");
+  // Second signal must be a no-op (idempotent guard).
+  await shutdown("SIGINT");
+
+  assert.equal(closeCalls, 1);
+  assert.deepEqual(exitCodes, [0]);
 });
 
 // One live route test: confirm the wired "/" route really 301s through Express.

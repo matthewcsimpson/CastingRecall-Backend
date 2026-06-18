@@ -1,3 +1,5 @@
+const { parseNumberWithDefault } = require("./numberUtils");
+
 /**
  * Normalize a string input with optional trimming and null handling.
  * @param {*} value Raw value to normalize.
@@ -62,10 +64,7 @@ const normalizeGenreIds = (ids) => {
   }
 
   return ids
-    .map((value) => {
-      const num = Number(value);
-      return Number.isFinite(num) ? num : null;
-    })
+    .map((value) => parseNumberWithDefault(value, null))
     .filter((value) => value !== null);
 };
 

@@ -121,13 +121,30 @@ test("makePuzzle throws when no connected movie can be found", async () => {
   await assert.rejects(makePuzzle(), /Unable to find a connected movie/);
 });
 
-test("makePuzzle wraps an unexpected (non-tagged) error", async () => {
+test("makePuzzle wraps an unexpected error with context but leaves it untagged", async () => {
   discoverSeedResults = () => {
     throw new Error("socket hang up");
   };
   await assert.rejects(makePuzzle(), (error) => {
-    assert.equal(error.isExternalServiceError, true);
+    // Not tagged external, so the controller maps it to 500, not 502.
+    assert.notEqual(error.isExternalServiceError, true);
     assert.match(error.message, /Failed to generate puzzle/);
+    assert.match(String(error.cause), /socket hang up/);
     return true;
   });
+});
+
+test("makePuzzle rejects when the supporting cast is fully excluded by the previous movie", async () => {
+  // Every movie returns the same cast ids, so the linked movie's supporting
+  // cast — which excludes the previous movie's cast — comes back empty.
+  creditsFor = () => ({
+    cast: [0, 1, 2, 3, 4].map((order) => ({
+      id: `shared-a${order}`,
+      name: `Actor ${order}`,
+      order,
+      character: "Role",
+    })),
+    crew: [{ id: "shared-d", name: "Director", job: "Director" }],
+  });
+  await assert.rejects(makePuzzle(), /did not include sufficient cast data/);
 });

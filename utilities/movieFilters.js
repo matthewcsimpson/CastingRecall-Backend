@@ -3,18 +3,10 @@ const { parseNumberWithDefault } = require("./numberUtils");
 const LOWEST_YEAR = parseNumberWithDefault(process.env.LOWEST_YEAR, 1980);
 const EXCLUDED_GENRES = [99, 10770];
 
-const normalizeGenreId = (genreId) => {
-  if (typeof genreId === "string") {
-    const parsed = Number.parseInt(genreId, 10);
-    return Number.isNaN(parsed) ? genreId : parsed;
-  }
-  return genreId;
-};
-
 const hasExcludedGenre = (genreIds) =>
   Array.isArray(genreIds) &&
   genreIds.some((genreId) =>
-    EXCLUDED_GENRES.includes(normalizeGenreId(genreId))
+    EXCLUDED_GENRES.includes(parseNumberWithDefault(genreId, null))
   );
 
 const getReleaseYear = (movie) => {
@@ -65,7 +57,6 @@ const isEligibleMovie = (movie, options = {}) => {
 module.exports = {
   getReleaseYear,
   isWithinYearBounds,
-  normalizeGenreId,
   hasExcludedGenre,
   isEligibleMovie,
   LOWEST_YEAR,
