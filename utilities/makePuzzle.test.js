@@ -121,13 +121,15 @@ test("makePuzzle throws when no connected movie can be found", async () => {
   await assert.rejects(makePuzzle(), /Unable to find a connected movie/);
 });
 
-test("makePuzzle wraps an unexpected (non-tagged) error", async () => {
+test("makePuzzle wraps an unexpected error with context but leaves it untagged", async () => {
   discoverSeedResults = () => {
     throw new Error("socket hang up");
   };
   await assert.rejects(makePuzzle(), (error) => {
-    assert.equal(error.isExternalServiceError, true);
+    // Not tagged external, so the controller maps it to 500, not 502.
+    assert.notEqual(error.isExternalServiceError, true);
     assert.match(error.message, /Failed to generate puzzle/);
+    assert.match(String(error.cause), /socket hang up/);
     return true;
   });
 });

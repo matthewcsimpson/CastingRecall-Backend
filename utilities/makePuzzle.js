@@ -344,7 +344,11 @@ const makePuzzle = async () => {
       throw error;
     }
 
-    throw createExternalServiceError("Failed to generate puzzle.", error);
+    // Unexpected/internal failure: add context and preserve the cause, but
+    // do NOT tag it as an external-service error — the controller maps
+    // untagged errors to 500 rather than mislabelling an internal bug as a
+    // 502 TMDB failure.
+    throw new Error("Failed to generate puzzle.", { cause: error });
   }
 };
 
