@@ -4,7 +4,6 @@ const assert = require("node:assert/strict");
 const {
   getReleaseYear,
   isWithinYearBounds,
-  normalizeGenreId,
   hasExcludedGenre,
   isEligibleMovie,
   LOWEST_YEAR,
@@ -32,20 +31,6 @@ test("getReleaseYear returns null when the leading chars are not numeric", () =>
   assert.equal(getReleaseYear({ release_date: "abcd-01-01" }), null);
 });
 
-// --- normalizeGenreId ---
-
-test("normalizeGenreId parses a numeric string", () => {
-  assert.equal(normalizeGenreId("99"), 99);
-});
-
-test("normalizeGenreId passes through a number", () => {
-  assert.equal(normalizeGenreId(28), 28);
-});
-
-test("normalizeGenreId leaves an unparseable string unchanged", () => {
-  assert.equal(normalizeGenreId("drama"), "drama");
-});
-
 // --- hasExcludedGenre ---
 
 test("hasExcludedGenre detects documentary (99)", () => {
@@ -62,6 +47,10 @@ test("hasExcludedGenre detects excluded genres given as strings", () => {
 
 test("hasExcludedGenre returns false when no genre is excluded", () => {
   assert.equal(hasExcludedGenre([28, 12, 878]), false);
+});
+
+test("hasExcludedGenre treats a non-numeric genre id as no-match", () => {
+  assert.equal(hasExcludedGenre(["drama", 28]), false);
 });
 
 test("hasExcludedGenre returns false for a non-array", () => {
