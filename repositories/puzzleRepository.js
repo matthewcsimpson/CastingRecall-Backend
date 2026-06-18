@@ -1,6 +1,11 @@
 const { query } = require("../utilities/db");
 const { logger } = require("../utilities/logger");
 
+// Shared column projection for puzzle reads. Static identifier list (never
+// user input), kept in one place so a column add/rename stays consistent
+// across every read query below.
+const PUZZLE_COLUMNS = "puzzle_id, puzzle, key_people, created_at";
+
 /**
  * @typedef {Object} PuzzleRecord
  * @property {number} puzzleId
@@ -76,7 +81,7 @@ const insertPuzzleToDb = async ({ puzzleId, puzzle, keyPeople }) => {
 const listPuzzlesFromDb = async () => {
   const result = await query(
     `
-      SELECT puzzle_id, puzzle, key_people, created_at
+      SELECT ${PUZZLE_COLUMNS}
       FROM puzzles
       ORDER BY puzzle_id DESC
     `
@@ -92,7 +97,7 @@ const listPuzzlesFromDb = async () => {
 const getLatestPuzzleFromDb = async () => {
   const result = await query(
     `
-      SELECT puzzle_id, puzzle, key_people, created_at
+      SELECT ${PUZZLE_COLUMNS}
       FROM puzzles
       ORDER BY puzzle_id DESC
       LIMIT 1
@@ -114,7 +119,7 @@ const getLatestPuzzleFromDb = async () => {
 const getPuzzleByIdFromDb = async (puzzleId) => {
   const result = await query(
     `
-      SELECT puzzle_id, puzzle, key_people, created_at
+      SELECT ${PUZZLE_COLUMNS}
       FROM puzzles
       WHERE puzzle_id = $1
       LIMIT 1
