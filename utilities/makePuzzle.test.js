@@ -133,3 +133,18 @@ test("makePuzzle wraps an unexpected error with context but leaves it untagged",
     return true;
   });
 });
+
+test("makePuzzle rejects when the supporting cast is fully excluded by the previous movie", async () => {
+  // Every movie returns the same cast ids, so the linked movie's supporting
+  // cast — which excludes the previous movie's cast — comes back empty.
+  creditsFor = () => ({
+    cast: [0, 1, 2, 3, 4].map((order) => ({
+      id: `shared-a${order}`,
+      name: `Actor ${order}`,
+      order,
+      character: "Role",
+    })),
+    crew: [{ id: "shared-d", name: "Director", job: "Director" }],
+  });
+  await assert.rejects(makePuzzle(), /did not include sufficient cast data/);
+});
