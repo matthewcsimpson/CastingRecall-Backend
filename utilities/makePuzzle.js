@@ -251,9 +251,8 @@ const createPuzzleMovie = (movie, cast, directors, keyPerson) => ({
  */
 const makePuzzle = async () => {
   try {
-    const randomYear = Math.floor(
-      Math.random() * (CURRENT_YEAR - LOWEST_YEAR) + LOWEST_YEAR
-    );
+    const randomYear =
+      LOWEST_YEAR + getRandomNumberUpToInt(CURRENT_YEAR - LOWEST_YEAR);
 
     const tempArray = [];
     const puzzleLength = 6;
