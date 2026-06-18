@@ -79,7 +79,7 @@ exports.generatePuzzle = async (req, res) => {
       if (err?.isExternalServiceError) {
         logger.warn("generatePuzzle attempt failed (external service)", {
           attempt,
-          message: err.message,
+          error: err,
         });
       } else {
         logger.error("generatePuzzle attempt failed", { attempt, error: err });
