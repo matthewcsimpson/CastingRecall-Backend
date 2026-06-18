@@ -19,7 +19,12 @@ const serializeError = (value) =>
         name: value.name,
         message: value.message,
         stack: value.stack,
-        ...(value.cause !== undefined ? { cause: String(value.cause) } : {}),
+        // Recurse so a nested Error cause keeps its own name/message/stack
+        // instead of collapsing to a message-only string. Non-Error causes
+        // pass through unchanged.
+        ...(value.cause !== undefined
+          ? { cause: serializeError(value.cause) }
+          : {}),
       }
     : value;
 

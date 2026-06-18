@@ -78,10 +78,18 @@ test("serializes an Error in context to name, message, and stack", () => {
   assert.match(entry.context.error.stack, /nope/);
 });
 
-test("includes the error cause as a string when present", () => {
+test("serializes a nested Error cause to its own name/message/stack", () => {
   const error = new Error("wrapper", { cause: new Error("root cause") });
   const entry = capture("error", () => logger.error("failed", { error }));
-  assert.match(entry.context.error.cause, /root cause/);
+  assert.equal(entry.context.error.cause.name, "Error");
+  assert.equal(entry.context.error.cause.message, "root cause");
+  assert.equal(typeof entry.context.error.cause.stack, "string");
+});
+
+test("passes a non-Error cause through unchanged", () => {
+  const error = new Error("wrapper", { cause: "string reason" });
+  const entry = capture("error", () => logger.error("failed", { error }));
+  assert.equal(entry.context.error.cause, "string reason");
 });
 
 test("omits the cause key when the error has none", () => {

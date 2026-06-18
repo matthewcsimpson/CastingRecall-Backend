@@ -53,6 +53,12 @@ test("hasExcludedGenre treats a non-numeric genre id as no-match", () => {
   assert.equal(hasExcludedGenre(["drama", 28]), false);
 });
 
+test("hasExcludedGenre treats a trailing-garbage id as no-match", () => {
+  // Coercion uses Number(), so "99abc" -> NaN -> no-match. (The old parseInt
+  // form read this as 99 and excluded it; pin the current behavior.)
+  assert.equal(hasExcludedGenre(["99abc"]), false);
+});
+
 test("hasExcludedGenre returns false for a non-array", () => {
   assert.equal(hasExcludedGenre(null), false);
 });
