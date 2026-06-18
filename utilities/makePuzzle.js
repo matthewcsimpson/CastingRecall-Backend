@@ -5,7 +5,7 @@ require("dotenv").config({ quiet: true });
  * @typedef {{ id?: number|null, name?: string|null, original_name?: string|null, fullName?: string|null, character?: string|null, profile_path?: string|null, order?: number|null }} TMDBPerson
  * @typedef {{ id?: number|null, title?: string|null, name?: string|null, original_title?: string|null, original_name?: string|null, poster_path?: string|null, release_date?: string|null, overview?: string|null, genre_ids?: Array<number|string>, keyPerson?: TMDBPerson|null, cast?: TMDBPerson[], directors?: TMDBPerson[] }} TMDBMovie
  * @typedef {{ cast: TMDBPerson[], crew: TMDBPerson[] }} TMDBCredits
- * @typedef {Error & { statusCode: number, isExternalServiceError: true, cause?: unknown, rateLimitReset?: string|null }} ExternalServiceError
+ * @typedef {Error & { statusCode: number, isExternalServiceError: true, cause?: unknown }} ExternalServiceError
  * @typedef {TMDBMovie & { keyPerson: TMDBPerson|null, cast: TMDBPerson[], directors: TMDBPerson[] }} PuzzleMovie
  */
 
@@ -82,10 +82,6 @@ const fetchWithRetry = async (url, retries = MAX_RETRIES) => {
       }
 
       if (attempt >= retries || (status && status < 500)) {
-        if (status === 429) {
-          error.rateLimitReset =
-            error?.response?.headers?.["retry-after"] || null;
-        }
         throw error;
       }
 
